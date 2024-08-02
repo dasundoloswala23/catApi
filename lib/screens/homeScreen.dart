@@ -81,12 +81,15 @@ class _HomeScreenState extends State<HomeScreen> {
       )
           : Column(
         children: [
-          TextField(
-            decoration: InputDecoration(
-              labelText: 'Search by name',
-              border: OutlineInputBorder(),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: InputDecoration(
+                labelText: 'Search by name',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: _filterCats,
             ),
-            onChanged: _filterCats,
           ),
 
           Expanded(
