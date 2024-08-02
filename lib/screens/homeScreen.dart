@@ -1,9 +1,5 @@
-import 'dart:core';
-import 'dart:core';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
 import '../controllers/imagesApi.dart';
 import '../model/images.dart';
 
@@ -18,9 +14,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Images> _cats = [];
   List<Images> _filteredCats = [];
   bool _isLoading = true;
-  int _currentPage = 0;
+  int _currentPage = 1;
   final int _limit = 40;
   bool _isFetchingMore = false;
+  String _selectedType = 'gifs'; // default to gifs
 
   @override
   void initState() {
@@ -30,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadCats() async {
     try {
-      final cats = await CatService.fetchCats(_currentPage, _limit);
+      final cats = await CatService.fetchCats(_currentPage, _limit, _selectedType);
       setState(() {
         _cats.addAll(cats);
         _filteredCats.addAll(cats);
@@ -42,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
         _isFetchingMore = false;
       });
-
+      _showErrorDialog('Failed to load cats. Please try again.');
     }
   }
 
@@ -56,10 +53,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   void _filterCats(String query) {
     final List<Images> filteredCats = _cats.where((cat) {
-      final catName = cat.id?.toLowerCase() ?? '';
+      final catName = cat.name?.toLowerCase() ?? '';
       final input = query.toLowerCase();
       return catName.contains(input);
     }).toList();
@@ -67,6 +63,22 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _filteredCats = filteredCats;
     });
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -83,20 +95,54 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Search by name',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: _filterCats,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Search by name',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: _filterCats,
+                  ),
+                ),
+                SizedBox(width: 10),
+                DropdownButton<String>(
+                  value: _selectedType,
+                  items: [
+                    DropdownMenuItem(
+                      value: 'gifs',
+                      child: Text('GIFs'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'images',
+                      child: Text('Images'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'both',
+                      child: Text('Both'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedType = value!;
+                      _currentPage = 1;
+                      _cats.clear();
+                      _filteredCats.clear();
+                      _isLoading = true;
+                      _loadCats();
+                    });
+                  },
+                ),
+              ],
             ),
           ),
-
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: (ScrollNotification scrollInfo) {
                 if (scrollInfo.metrics.pixels ==
-                    scrollInfo.metrics.maxScrollExtent && !_isFetchingMore) {
+                    scrollInfo.metrics.maxScrollExtent &&
+                    !_isFetchingMore) {
                   _loadMoreCats();
                 }
                 return true;
@@ -114,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: Image.network(
                       cat.url ?? '',
                       width: 150,
-                      height: 350,
+                      height: 150,
                       fit: BoxFit.cover,
                     ),
                     title: Text(cat.name ?? 'Unknown'),
